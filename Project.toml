@@ -1,0 +1,7 @@
+name = "TuringABC"
+uuid = "ade86764-f155-4505-83b0-7d175a577239"
+authors = ["Tor Erlend Fjelde <tor.erlend95@gmail.com> and contributors"]
+version = "0.1.0"
+
+[compat]
+julia = "1"
