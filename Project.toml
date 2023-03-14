@@ -3,5 +3,13 @@ uuid = "ade86764-f155-4505-83b0-7d175a577239"
 authors = ["Tor Erlend Fjelde <tor.erlend95@gmail.com> and contributors"]
 version = "0.1.0"
 
+[deps]
+AbstractMCMC = "80f14c24-f653-4e6a-9b94-39d6b0f70001"
+DynamicPPL = "366bfd00-2699-11ea-058f-f148b4cae6d8"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+MCMCChains = "c7f686f2-ff18-58e9-bc7b-31028e88f75d"
+Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+
 [compat]
 julia = "1"
