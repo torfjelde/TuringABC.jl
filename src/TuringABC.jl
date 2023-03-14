@@ -7,16 +7,20 @@ using AbstractMCMC: AbstractMCMC
 using DynamicPPL: DynamicPPL, AbstractPPL, OrderedDict
 using MCMCChains: MCMCChains
 
-export ABC
+using DocStringExtensions
 
+export ABC
 
 """
     ABC <: AbstractMCMC.AbstractSampler
 
 Approximate Bayesian Computation (ABC) sampler.
+
+# Fields
+$(FIELDS)
 """
 struct ABC{F,V,T} <: AbstractMCMC.AbstractSampler
-    "statistic to compute for data"
+    "distance and statistic method expecting two arguments: `data_true` and `data_proposed`"
     dist_and_stat::F
     "variable representing the data"
     data_variable::V
@@ -128,7 +132,8 @@ function AbstractMCMC.bundle_samples(
     sampler::ABC,
     ::Any,
     ::Type{MCMCChains.Chains};
-    param_names=missing, discard_initial=0, thinning=1
+    param_names=missing, discard_initial=0, thinning=1,
+    kwargs...
 )
     # Check if we received any parameter names.
     if ismissing(param_names)
