@@ -1,3 +1,11 @@
+"""
+    DiracDelta(value)
+
+A Dirac delta distribution with a single point mass at `value`.
+
+This is basically the same as `Distributions.Dirac` but without
+being restricted to univariate values.
+"""
 struct DiracDelta{T,V} <: Distributions.DiscreteDistribution{V}
     value::T
 end
