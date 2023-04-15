@@ -44,7 +44,7 @@ const EXAMPLE_MODELS = (
         @test std(chain[sym]) > 0
     end
 
-    @testset "sample_latent_and_data" begin
+    @testset "Simple posterior check" begin
         @model function demo()
             x ~ Normal(0, 1)
             y ~ Normal(x, 1)
@@ -55,5 +55,16 @@ const EXAMPLE_MODELS = (
         posterior_true = Normal(1/2, 1/√2)
         @test mean(chain[:x]) ≈ mean(posterior_true) atol=0.05
         @test std(chain[:x]) ≈ std(posterior_true) atol=0.05
+    end
+
+    @testset "With DiracDelta" begin
+        @model function demo_dirac()
+            x ~ Normal()
+            y ~ DiracDelta(x * ones(100))
+        end
+        model = demo_dirac() | (y = ones(100),)
+        sampler = ABC(0.1)
+        chain = sample(model, sampler, 10_000; chain_type=MCMCChains.Chains, progress=false)
+        @test mean(chain[:x]) ≈ 1.0 atol=0.1
     end
 end
