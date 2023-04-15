@@ -46,7 +46,7 @@ end
 
 function adapt!!(sampler::ABC, model::DynamicPPL.Model, state::ABCState)
     # TODO: Do something more principled than this scheduling.
-    new_threshold = max(state.threshold * (state.iteration / (1 + state.iteration))^(3/4), sampler.threshold_minimum)
+    new_threshold = max(state.threshold * √(state.iteration / (1 + state.iteration)), sampler.threshold_minimum)
     push!(state.threshold_history, new_threshold)
     return ABCState(state.θ, new_threshold, state.iteration, state.threshold_history)
 end
