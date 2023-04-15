@@ -12,8 +12,8 @@ model = demo() | (y = 2.0, )</code></pre><pre class="documenter-example-output">
 Iterations        = 501:1:1500
 Number of chains  = 1
 Samples per chain = 1000
-Wall duration     = 15.07 seconds
-Compute duration  = 15.07 seconds
+Wall duration     = 9.74 seconds
+Compute duration  = 9.74 seconds
 parameters        = x
 internals         = lp, n_steps, is_accept, acceptance_rate, log_density, hamiltonian_energy, hamiltonian_energy_error, max_hamiltonian_energy_error, tree_depth, numerical_error, step_size, nom_step_size
 
@@ -21,14 +21,14 @@ Summary Statistics
   parameters      mean       std      mcse   ess_bulk   ess_tail      rhat   e ⋯
       Symbol   Float64   Float64   Float64    Float64    Float64   Float64     ⋯
 
-           x    1.0169    0.7344    0.0328   491.5414   621.2677    0.9996     ⋯
+           x    0.9919    0.6929    0.0372   352.7532   712.0835    1.0010     ⋯
                                                                 1 column omitted
 
 Quantiles
   parameters      2.5%     25.0%     50.0%     75.0%     97.5%
       Symbol   Float64   Float64   Float64   Float64   Float64
 
-           x   -0.4979    0.5441    1.0354    1.5183    2.3731
+           x   -0.3776    0.5041    1.0246    1.4826    2.2836
 </code></pre><p>Now we do <code>ABC</code>:</p><pre><code class="language-julia hljs">using TuringABC
 
 spl = ABC(0.1)
@@ -43,12 +43,12 @@ Summary Statistics
   parameters      mean       std      mcse   ess_bulk   ess_tail      rhat   e ⋯
       Symbol   Float64   Float64   Float64    Float64    Float64   Float64     ⋯
 
-           x    1.0138    0.6881    0.0340   413.5432   360.1652    1.0058     ⋯
+           x    1.0469    0.7507    0.0409   336.6456   280.2012    1.0047     ⋯
                                                                 1 column omitted
 
 Quantiles
   parameters      2.5%     25.0%     50.0%     75.0%     97.5%
       Symbol   Float64   Float64   Float64   Float64   Float64
 
-           x   -0.3455    0.5677    1.0492    1.4723    2.3176
-</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Home</a><a class="docs-footer-nextpage" href="../api/">API »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Saturday 15 April 2023 12:40">Saturday 15 April 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+           x   -0.3922    0.5681    1.0664    1.5873    2.5876
+</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Home</a><a class="docs-footer-nextpage" href="../api/">API »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Saturday 15 April 2023 12:44">Saturday 15 April 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
