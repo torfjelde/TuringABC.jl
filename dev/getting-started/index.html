@@ -7,13 +7,13 @@
     y ~ Normal(x, 1)
 end
 
-model = demo() | (y = 2.0, )</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">DynamicPPL.Model{typeof(Main.demo), (), (), (), Tuple{}, Tuple{}, DynamicPPL.ConditionContext{NamedTuple{(:y,), Tuple{Float64}}, DynamicPPL.DefaultContext}}(Main.demo, NamedTuple(), NamedTuple(), ConditionContext((y = 2.0,), DynamicPPL.DefaultContext()))</code></pre><p>Let&#39;s sample with <code>NUTS</code> first to have something to compare to</p><pre><code class="language-julia hljs">samples_nuts = AbstractMCMC.sample(model, NUTS(), 1_000)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Chains MCMC chain (1000×13×1 Array{Float64, 3}):
+model = demo() | (y = 2.0, )</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">DynamicPPL.Model{typeof(Main.demo), (), (), (), Tuple{}, Tuple{}, DynamicPPL.ConditionContext{NamedTuple{(:y,), Tuple{Float64}}, DynamicPPL.DefaultContext}}(Main.demo, NamedTuple(), NamedTuple(), ConditionContext((y = 2.0,), DynamicPPL.DefaultContext()))</code></pre><div class="admonition is-warning"><header class="admonition-header">Warning</header><div class="admonition-body"><p>TuringABC currently only supports conditioning of the form <code>model | (...)</code> or <code>condition(model, ...)</code>. That is, passing conditioned variables as inputs to the model is NOT supported (yet).</p></div></div><p>Let&#39;s sample with <code>NUTS</code> first to have something to compare to</p><pre><code class="language-julia hljs">samples_nuts = AbstractMCMC.sample(model, NUTS(), 1_000)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Chains MCMC chain (1000×13×1 Array{Float64, 3}):
 
 Iterations        = 501:1:1500
 Number of chains  = 1
 Samples per chain = 1000
-Wall duration     = 12.14 seconds
-Compute duration  = 12.14 seconds
+Wall duration     = 15.07 seconds
+Compute duration  = 15.07 seconds
 parameters        = x
 internals         = lp, n_steps, is_accept, acceptance_rate, log_density, hamiltonian_energy, hamiltonian_energy_error, max_hamiltonian_energy_error, tree_depth, numerical_error, step_size, nom_step_size
 
@@ -21,34 +21,34 @@ Summary Statistics
   parameters      mean       std      mcse   ess_bulk   ess_tail      rhat   e ⋯
       Symbol   Float64   Float64   Float64    Float64    Float64   Float64     ⋯
 
-           x    0.9891    0.7130    0.0324   486.3396   698.9634    1.0011     ⋯
+           x    1.0169    0.7344    0.0328   491.5414   621.2677    0.9996     ⋯
                                                                 1 column omitted
 
 Quantiles
   parameters      2.5%     25.0%     50.0%     75.0%     97.5%
       Symbol   Float64   Float64   Float64   Float64   Float64
 
-           x   -0.4197    0.5075    0.9624    1.4805    2.3614
+           x   -0.4979    0.5441    1.0354    1.5183    2.3731
 </code></pre><p>Now we do <code>ABC</code>:</p><pre><code class="language-julia hljs">using TuringABC
 
-spl = ABC(Turing.@varname(y), 0.1)
+spl = ABC(0.1)
 samples = AbstractMCMC.sample(model, spl, 10_000; chain_type=MCMCChains.Chains)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Chains MCMC chain (10000×1×1 Array{Float64, 3}):
 
 Iterations        = 1:1:10000
 Number of chains  = 1
 Samples per chain = 10000
-parameters        = param_1
+parameters        = x
 
 Summary Statistics
   parameters      mean       std      mcse   ess_bulk   ess_tail      rhat   e ⋯
       Symbol   Float64   Float64   Float64    Float64    Float64   Float64     ⋯
 
-     param_1    0.9482    0.6745    0.0340   393.5651   318.5491    1.0012     ⋯
+           x    1.0138    0.6881    0.0340   413.5432   360.1652    1.0058     ⋯
                                                                 1 column omitted
 
 Quantiles
   parameters      2.5%     25.0%     50.0%     75.0%     97.5%
       Symbol   Float64   Float64   Float64   Float64   Float64
 
-     param_1   -0.3285    0.5004    0.9146    1.3939    2.3771
-</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Home</a><a class="docs-footer-nextpage" href="../api/">API »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Tuesday 14 March 2023 10:33">Tuesday 14 March 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+           x   -0.3455    0.5677    1.0492    1.4723    2.3176
+</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« Home</a><a class="docs-footer-nextpage" href="../api/">API »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Saturday 15 April 2023 12:40">Saturday 15 April 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
