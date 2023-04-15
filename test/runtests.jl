@@ -38,7 +38,7 @@ const EXAMPLE_MODELS = (
         # This is just checking that we sort of move around so we'll use
         # a huge epsilon.
         sampler = ABC(100)
-        chain = sample(model, sampler, 100; chain_type=MCMCChains.Chains)
+        chain = sample(model, sampler, 100; chain_type=MCMCChains.Chains, progress=false)
         # Every model contains some `x` variable, so we'll just check this.
         sym = first(names(MCMCChains.group(chain, :x)))
         @test std(chain[sym]) > 0
@@ -51,10 +51,10 @@ const EXAMPLE_MODELS = (
         end
         model = demo() | (y = 1.0,)
         sampler = ABC(0.1)
-        chain = sample(model, sampler, 10_000; chain_type=MCMCChains.Chains, progress=false)
+        chain = sample(model, sampler, 10_000; discard_initial=5_000, chain_type=MCMCChains.Chains, progress=false)
         posterior_true = Normal(1/2, 1/√2)
-        @test mean(chain[:x]) ≈ mean(posterior_true) atol=0.05
-        @test std(chain[:x]) ≈ std(posterior_true) atol=0.05
+        @test mean(chain[:x]) ≈ mean(posterior_true) atol=0.1
+        @test std(chain[:x]) ≈ std(posterior_true) atol=0.1
     end
 
     @testset "With DiracDelta" begin

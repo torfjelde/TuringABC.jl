@@ -33,3 +33,130 @@ using TuringABC
 spl = ABC(0.1)
 samples = AbstractMCMC.sample(model, spl, 10_000; chain_type=MCMCChains.Chains)
 ```
+
+## More complex example
+Now we're going to try something a bit more crazy: we'll run inference _within_ a model `outer_model`, and _then_ run inference over this!
+Yes, you read that right: _inference-within-inference_.
+
+```@example nested-sampling
+using Turing, TuringABC, LinearAlgebra, Logging
+using Turing.DynamicPPL
+```
+
+First we define the `inner_model`, i.e. the model we're going to do inference over within `outer_model`.
+
+```@example nested-sampling
+@model function inner_model(σ², N)
+    x ~ MvNormal(zeros(N), I)
+    y_inner ~ MvNormal(x, σ² * I)
+end
+```
+
+Then we eneed a method which can convert the resulting approximation of the posterior of `inner_model` into some statistics that we can use as "observation" for the approximate posterior:
+
+```@example nested-sampling
+function f_default(samples::MCMCChains.Chains)
+    a = Array(samples)
+    μ = vec(mean(a; dims=1))  # mean over iterations
+    σ = vec(std(a; dims=1))   # std over iterations
+    return vcat(μ, σ)
+end
+```
+
+Now we can finally define the `outer_model`!
+
+```@example nested-sampling
+@model function outer_model(
+    μ;
+    f=f_default,
+    # Sampler and number of samples for the inner model.
+    # We'll use NUTS by default, but this will be expensive!
+    inner_sampler=NUTS(),
+    num_inner_samples=500,
+)
+    N = length(μ)
+    # Prior on the variance used.
+    σ² ~ InverseGamma(2, 1)
+    # Prior on the mean used.
+    y ~ MvNormal(μ, σ² * I)
+    # Obtain (approximate) posterior of the inner model conditioned
+    # on the sampled `y` from above.
+    inner_mdl = inner_model(σ², N) | (y_inner = y,)
+    # Turn off logging for this inner sample since it will be called many times.
+    posterior = with_logger(NullLogger()) do
+        sample(inner_mdl, inner_sampler, num_inner_samples; chain_type=MCMCChains.Chains, progress=false)
+    end
+    # Since we're now working with an empirical approximation of the
+    # posterior, we project `posterior` (usually samples) onto some statistics
+    # using `f`, and then this we'll fix/condition to some value later.
+    stat ~ DiracDelta(f(posterior))
+end
+```
+
+```@example nested-sampling
+# Let's generate some data.
+μ = zeros(2)
+model = outer_model(μ)
+
+vars_true = (σ² = 0.5, y = 2 .* ones(length(μ)))
+stat_true = rand(condition(model, vars_true)).stat
+```
+
+```@example nested-sampling
+# Now condition the model on the true statistic.
+conditioned_model = model | (stat = stat_true,)
+# Now if we sample from it there is no `stat`.
+rand(conditioned_model)
+```
+
+```@example nested-sampling
+# We can now use ABC to sample.
+# NOTE: This will take a few minutes to run since we're running NUTS in every ABC iteration.
+chain = sample(conditioned_model, ABC(10), 1000; discard_initial=500, chain_type=MCMCChains.Chains, progress=true)
+```
+
+```@example nested-sampling
+# And finally we can visualize the results.
+using StatsPlots
+
+ps = mapreduce(vcat, [@varname(σ²), @varname(y)]) do vn
+    map(DynamicPPL.varname_leaves(vn, DynamicPPL.getvalue(vars_true, vn))) do vn_leaf
+        sym = Symbol(vn_leaf)
+        p = plot(title=sym)
+        density!(p, chain, sym)
+        vline!([DynamicPPL.getvalue(vars_true, vn_leaf)], label="true")
+        p
+    end
+end
+plot(ps..., layout=(length(ps), 1), size=(800, 200 * length(ps)))
+```
+
+Seems like it actually did something useful!
+
+Let's also try `ABC` for the inner sampler:
+
+```@example nested-sampling
+# We can now use ABC to sample.
+# NOTE: This will take a few minutes to run since we're running NUTS in every ABC iteration.
+chain = sample(
+    condition(outer_model(μ; inner_sampler=ABC(10)), stat=stat_true),
+    ABC(10),
+    1000;
+    discard_initial=1000,
+    chain_type=MCMCChains.Chains,
+    progress=true
+)
+```
+
+```@example nested-sampling
+ps = mapreduce(vcat, [@varname(σ²), @varname(y)]) do vn
+    map(DynamicPPL.varname_leaves(vn, DynamicPPL.getvalue(vars_true, vn))) do vn_leaf
+        sym = Symbol(vn_leaf)
+        p = plot(title=sym)
+        density!(p, chain, sym)
+        vline!([DynamicPPL.getvalue(vars_true, vn_leaf)], label="true")
+        p
+    end
+end
+plot(ps..., layout=(length(ps), 1), size=(800, 200 * length(ps)))
+```

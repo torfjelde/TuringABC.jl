@@ -5,11 +5,13 @@ using Random, LinearAlgebra, Statistics
 using AbstractMCMC: AbstractMCMC
 using DynamicPPL: DynamicPPL, AbstractPPL, OrderedDict
 using MCMCChains: MCMCChains
-using Distributions
 
+using Distributions
 using DocStringExtensions
 
 export ABC
+
+_default_dist_and_stat(data1, data2) = mean(abs2, flatten(data1) .- flatten(data2))
 
 """
     ABC <: AbstractMCMC.AbstractSampler
@@ -19,18 +21,35 @@ Approximate Bayesian Computation (ABC) sampler.
 # Fields
 $(FIELDS)
 """
-struct ABC{F,T} <: AbstractMCMC.AbstractSampler
+Base.@kwdef struct ABC{F,T} <: AbstractMCMC.AbstractSampler
     "distance and statistic method expecting two arguments: `data_true` and `data_proposed`"
-    dist_and_stat::F
-    "threshold used for comparison to decide whether to accept or reject"
-    threshold::T
+    dist_and_stat::F=_default_dist_and_stat
+    "initial threshold used for comparison to decide whether to accept or reject"
+    threshold_initial::T=10.0
+    "final threshold used for comparison to decide whether to accept or reject"
+    threshold_minimum::T=1e-2
 end
 
 # Use the mean.
-ABC(threshold) = ABC(
-    (data1, data2) -> mean(abs2, flatten(data1) .- flatten(data2)),
-    threshold
-)
+ABC(threshold_initial::Real) = ABC(; threshold_initial=float(threshold_initial))
+
+struct ABCState{A,T}
+    "current parameter values"
+    θ::A
+    "current threshold"
+    threshold::T
+    "current iteration"
+    iteration::Int
+    "threshold history"
+    threshold_history::Vector{T}
+end
+
+function adapt!!(sampler::ABC, model::DynamicPPL.Model, state::ABCState)
+    # TODO: Do something more principled than this scheduling.
+    new_threshold = max(state.threshold * (state.iteration / (1 + state.iteration))^(3/4), sampler.threshold_minimum)
+    push!(state.threshold_history, new_threshold)
+    return ABCState(state.θ, new_threshold, state.iteration, state.threshold_history)
+end
 
 """
     varname_keys(x)
@@ -140,19 +159,23 @@ end
 function AbstractMCMC.step(rng::Random.AbstractRNG, model::DynamicPPL.Model, sampler::ABC; kwargs...)
     θ, _, _ = sample_latent_and_data(rng, sampler, model)
     # TODO: Add statistics, etc.?
-    return θ, θ
+    return θ, ABCState(θ, sampler.threshold_initial, 1, [sampler.threshold_initial])
 end
 
-function AbstractMCMC.step(rng::Random.AbstractRNG, model::DynamicPPL.Model, sampler::ABC, θ_current; kwargs...)
+function AbstractMCMC.step(rng::Random.AbstractRNG, model::DynamicPPL.Model, sampler::ABC, state::ABCState; kwargs...)
+    # Adapt the threshold.
+    state = adapt!!(sampler, model, state)
+
+    # Sample a new candidate.
     θ_candidate, data_candidate, data_true = sample_latent_and_data(rng, sampler, model)
     # Compute the distance between the generated data and true.
     dist = statistic_distance(sampler, data_true, data_candidate)
 
-    # TODO: Should `threshold` be adaptable?
-    θ_next = dist < sampler.threshold ? θ_candidate : θ_current
+    # Accept or reject the candidate.
+    θ_next = dist < state.threshold ? θ_candidate : state.θ
 
     # TODO: Add statistics, etc.?
-    return θ_next, θ_next
+    return θ_next, ABCState(θ_next, state.threshold, state.iteration + 1, state.threshold_history)
 end
 
 # Bundle the samples up nicely after calls to `sample`.
@@ -160,7 +183,7 @@ function AbstractMCMC.bundle_samples(
     samples::AbstractVector{<:AbstractDict},
     model::DynamicPPL.Model,
     sampler::ABC,
-    ::Any,
+    state::ABCState,
     ::Type{MCMCChains.Chains};
     discard_initial=0, thinning=1,
     kwargs...
@@ -207,7 +230,7 @@ function AbstractMCMC.bundle_samples(
 
     # Pre-allocation the array to hold the samples.
     num_iters = length(samples)
-    num_params = length(param_names)
+    num_params = length(param_names) + 1  # +1 for the thresholds.
     num_chains = 1
     T = Union{Missing, Float64}
     A = Array{T,3}(undef, num_iters, num_params, num_chains)
@@ -221,10 +244,19 @@ function AbstractMCMC.bundle_samples(
                 A[iter_idx, param_idx, 1] = missing
             end
         end
+
+        # Add the threshold.
+        A[iter_idx, num_params, 1] = state.threshold_history[discard_initial + iter_idx]
     end
 
     # HACK: `map(identity, A)` to potentially narrow the type of `A`.
-    return MCMCChains.Chains(map(identity, A), param_names, (parameters=param_names,); start=discard_initial + 1, thin=thinning)
+    return MCMCChains.Chains(
+        map(identity, A),
+        vcat(param_names, [:threshold]),
+        (parameters=param_names, internals=[:threshold]);
+        start=discard_initial + 1,
+        thin=thinning
+    )
 end
 
 export DiracDelta
