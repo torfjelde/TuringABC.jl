@@ -27,7 +27,9 @@ Base.@kwdef struct ABC{F,T} <: AbstractMCMC.AbstractSampler
     "initial threshold used for comparison to decide whether to accept or reject"
     threshold_initial::T=10.0
     "final threshold used for comparison to decide whether to accept or reject"
-    threshold_minimum::T=1e-2
+    threshold_minimum::T=1e-1
+    "factor by which to decrease the threshold"
+    threshold_decay::T=0.99
 end
 
 # Use the mean.
@@ -46,7 +48,7 @@ end
 
 function adapt!!(sampler::ABC, model::DynamicPPL.Model, state::ABCState)
     # TODO: Do something more principled than this scheduling.
-    new_threshold = max(state.threshold * √(state.iteration / (1 + state.iteration)), sampler.threshold_minimum)
+    new_threshold = max(state.threshold * (state.iteration / (state.iteration + 1))^sampler.threshold_decay, sampler.threshold_minimum)
     push!(state.threshold_history, new_threshold)
     return ABCState(state.θ, new_threshold, state.iteration, state.threshold_history)
 end

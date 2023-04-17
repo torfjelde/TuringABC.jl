@@ -22,7 +22,7 @@ model = demo() | (y = 2.0, )
 Let's sample with `NUTS` first to have something to compare to
 
 ```@example demo
-samples_nuts = AbstractMCMC.sample(model, NUTS(), 1_000)
+samples_nuts = sample(model, NUTS(), 1_000)
 ```
 
 Now we do `ABC`:
@@ -31,12 +31,15 @@ Now we do `ABC`:
 using TuringABC
 
 spl = ABC(0.1)
-samples = AbstractMCMC.sample(model, spl, 10_000; chain_type=MCMCChains.Chains)
+samples = sample(model, spl, 10_000; chain_type=MCMCChains.Chains)
 ```
 
 ## More complex example
 Now we're going to try something a bit more crazy: we'll run inference _within_ a model `outer_model`, and _then_ run inference over this!
 Yes, you read that right: _inference-within-inference_.
+
+!!! warning
+    This is not something we recommend doing; this is just a demo of what one _could_ do!
 
 ```@example nested-sampling
 using Turing, TuringABC, LinearAlgebra, Logging
@@ -52,14 +55,12 @@ First we define the `inner_model`, i.e. the model we're going to do inference ov
 end
 ```
 
-Then we eneed a method which can convert the resulting approximation of the posterior of `inner_model` into some statistics that we can use as "observation" for the approximate posterior:
+Then we need a method which can convert the resulting approximation of the posterior of `inner_model` into some statistics that we can use as "observation" for the approximate posterior:
 
 ```@example nested-sampling
 function f_default(samples::MCMCChains.Chains)
-    a = Array(samples)
-    μ = vec(mean(a; dims=1))  # mean over iterations
-    σ = vec(std(a; dims=1))   # std over iterations
-    return vcat(μ, σ)
+    # Use quantiles of the "posterior" (approximated by `samples`)
+    return vec(mapreduce(Base.Fix2(quantile, [0.25, 0.5, 0.75]), hcat, eachcol(Array(samples))))
 end
 ```
 
@@ -72,7 +73,7 @@ Now we can finally define the `outer_model`!
     # Sampler and number of samples for the inner model.
     # We'll use NUTS by default, but this will be expensive!
     inner_sampler=NUTS(),
-    num_inner_samples=500,
+    num_inner_samples=1000,
 )
     N = length(μ)
     # Prior on the variance used.
@@ -90,6 +91,8 @@ Now we can finally define the `outer_model`!
     # posterior, we project `posterior` (usually samples) onto some statistics
     # using `f`, and then this we'll fix/condition to some value later.
     stat ~ DiracDelta(f(posterior))
+
+    return (; posterior, stat)
 end
 ```
 
@@ -98,7 +101,7 @@ end
 μ = zeros(2)
 model = outer_model(μ)
 
-vars_true = (σ² = 0.5, y = 2 .* ones(length(μ)))
+vars_true = (σ² = 1.0, y = 0.5 .* ones(length(μ)))
 stat_true = rand(condition(model, vars_true)).stat
 ```
 
@@ -112,35 +115,9 @@ rand(conditioned_model)
 ```@example nested-sampling
 # We can now use ABC to sample.
 # NOTE: This will take a few minutes to run since we're running NUTS in every ABC iteration.
-chain = sample(conditioned_model, ABC(10), 1000; discard_initial=500, chain_type=MCMCChains.Chains, progress=true)
-```
-
-```@example nested-sampling
-# And finally we can visualize the results.
-using StatsPlots
-
-ps = mapreduce(vcat, [@varname(σ²), @varname(y)]) do vn
-    map(DynamicPPL.varname_leaves(vn, DynamicPPL.getvalue(vars_true, vn))) do vn_leaf
-        sym = Symbol(vn_leaf)
-        p = plot(title=sym)
-        density!(p, chain, sym)
-        vline!([DynamicPPL.getvalue(vars_true, vn_leaf)], label="true")
-        p
-    end
-end
-plot(ps..., layout=(length(ps), 1), size=(800, 200 * length(ps)))
-```
-
-Seems like it actually did something useful!
-
-Let's also try `ABC` for the inner sampler:
-
-```@example nested-sampling
-# We can now use ABC to sample.
-# NOTE: This will take a few minutes to run since we're running NUTS in every ABC iteration.
 chain = sample(
-    condition(outer_model(μ; inner_sampler=ABC(10)), stat=stat_true),
-    ABC(10),
+    conditioned_model,
+    ABC(threshold_initial=1.0, threshold_minimum=1e-2, threshold_decay=0.5),
     1000;
     discard_initial=1000,
     chain_type=MCMCChains.Chains,
@@ -149,14 +126,12 @@ chain = sample(
 ```
 
 ```@example nested-sampling
-ps = mapreduce(vcat, [@varname(σ²), @varname(y)]) do vn
-    map(DynamicPPL.varname_leaves(vn, DynamicPPL.getvalue(vars_true, vn))) do vn_leaf
-        sym = Symbol(vn_leaf)
-        p = plot(title=sym)
-        density!(p, chain, sym)
-        vline!([DynamicPPL.getvalue(vars_true, vn_leaf)], label="true")
-        p
-    end
-end
-plot(ps..., layout=(length(ps), 1), size=(800, 200 * length(ps)))
+quantile(chain)
 ```
+
+```@example nested-sampling
+using StatsPlots
+plot(chain)
+```
+
+This is clearly not working very well:) But hey, at least it's possible!
