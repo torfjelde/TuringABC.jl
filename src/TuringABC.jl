@@ -20,6 +20,17 @@ Approximate Bayesian Computation (ABC) sampler.
 
 # Fields
 $(FIELDS)
+
+# Notes
+The current implementation uses a schedule for decreasing the threshold that is
+```math
+\\epsilon_{i+1} = \\epsilon_i \\cdot \\frac{i}{i+1}^\\text{threshold_decay}
+```
+where `i` is the current iteration and `\\theta` is the current threshold.
+
+Whether or not this is a good idea, I don't know! But it's trying to achieve a
+behavior where the threshold decreases rapidly at the first, and then more slowly
+for later iterations.
 """
 Base.@kwdef struct ABC{F,T} <: AbstractMCMC.AbstractSampler
     "distance and statistic method expecting two arguments: `data_true` and `data_proposed`"
@@ -48,6 +59,9 @@ end
 
 function adapt!!(sampler::ABC, model::DynamicPPL.Model, state::ABCState)
     # TODO: Do something more principled than this scheduling.
+    # The idea here is that the threshold decreases rapidly at the beginning, but then
+    # as we get further and further into the sampling process, we decrease the threshold
+    # more slowly, e.g. (1 / (1 + iteration)) = 0.5 for `iteration=1` while (1 / (1 + iteration)) = 0.99 for `iteration=100`.
     new_threshold = max(state.threshold * (state.iteration / (state.iteration + 1))^sampler.threshold_decay, sampler.threshold_minimum)
     push!(state.threshold_history, new_threshold)
     return ABCState(state.θ, new_threshold, state.iteration, state.threshold_history)
