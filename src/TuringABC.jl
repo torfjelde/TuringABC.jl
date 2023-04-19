@@ -35,6 +35,8 @@ for later iterations.
 Base.@kwdef struct ABC{F,T} <: AbstractMCMC.AbstractSampler
     "distance and statistic method expecting two arguments: `data_true` and `data_proposed`"
     dist_and_stat::F=_default_dist_and_stat
+    "whether or not to  use a schedule for decreasing the threshold"
+    adapt_threshold::Bool=false
     "initial threshold used for comparison to decide whether to accept or reject"
     threshold_initial::T=10.0
     "final threshold used for comparison to decide whether to accept or reject"
@@ -44,7 +46,8 @@ Base.@kwdef struct ABC{F,T} <: AbstractMCMC.AbstractSampler
 end
 
 # Use the mean.
-ABC(threshold_initial::Real) = ABC(; threshold_initial=float(threshold_initial))
+ABC(threshold_initial::Real; kwargs...) = ABC(; threshold_initial=float(threshold_initial); kwargs...)
+ABC(dist_and_stat, threshold_initial::Real; kwargs...) = ABC(; dist_and_stat, threshold_initial=float(threshold_initial); kwargs...)
 
 struct ABCState{A,T}
     "current parameter values"
@@ -58,11 +61,16 @@ struct ABCState{A,T}
 end
 
 function adapt!!(sampler::ABC, model::DynamicPPL.Model, state::ABCState)
-    # TODO: Do something more principled than this scheduling.
-    # The idea here is that the threshold decreases rapidly at the beginning, but then
-    # as we get further and further into the sampling process, we decrease the threshold
-    # more slowly, e.g. (1 / (1 + iteration)) = 0.5 for `iteration=1` while (1 / (1 + iteration)) = 0.99 for `iteration=100`.
-    new_threshold = max(state.threshold * (state.iteration / (state.iteration + 1))^sampler.threshold_decay, sampler.threshold_minimum)
+    if sampler.adapt_threshold
+        # TODO: Do something more principled than this scheduling.
+        # The idea here is that the threshold decreases rapidly at the beginning, but then
+        # as we get further and further into the sampling process, we decrease the threshold
+        # more slowly, e.g. (1 / (1 + iteration)) = 0.5 for `iteration=1` while (1 / (1 + iteration)) = 0.99 for `iteration=100`.
+        new_threshold = max(state.threshold * (state.iteration / (state.iteration + 1))^sampler.threshold_decay, sampler.threshold_minimum)
+    else
+        new_threshold = sampler.threshold_initial
+    end
+
     push!(state.threshold_history, new_threshold)
     return ABCState(state.θ, new_threshold, state.iteration, state.threshold_history)
 end
