@@ -46,8 +46,8 @@ Base.@kwdef struct ABC{F,T} <: AbstractMCMC.AbstractSampler
 end
 
 # Use the mean.
-ABC(threshold_initial::Real; kwargs...) = ABC(; threshold_initial=float(threshold_initial); kwargs...)
-ABC(dist_and_stat, threshold_initial::Real; kwargs...) = ABC(; dist_and_stat, threshold_initial=float(threshold_initial); kwargs...)
+ABC(threshold_initial::Real; kwargs...) = ABC(; threshold_initial=float(threshold_initial), kwargs...)
+ABC(dist_and_stat, threshold_initial::Real; kwargs...) = ABC(; dist_and_stat, threshold_initial=float(threshold_initial), kwargs...)
 
 struct ABCState{A,T}
     "current parameter values"
