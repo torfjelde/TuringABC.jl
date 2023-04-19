@@ -117,7 +117,7 @@ rand(conditioned_model)
 # NOTE: This will take a few minutes to run since we're running NUTS in every ABC iteration.
 chain = sample(
     conditioned_model,
-    ABC(threshold_initial=1.0, threshold_minimum=1e-2, threshold_decay=0.5),
+    ABC(0.1),
     1000;
     discard_initial=1000,
     chain_type=MCMCChains.Chains,
